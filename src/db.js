@@ -131,3 +131,105 @@ export function accrueAll() {
   for (const row of rows) accrue(row.user_id);
   return rows.length;
 }
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS runs (
+    user_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    day TEXT NOT NULL,
+    final_chips INTEGER NOT NULL,
+    hands_played INTEGER NOT NULL,
+    finished_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, day)
+  );
+  CREATE INDEX IF NOT EXISTS idx_runs_day_score ON runs (day, final_chips DESC);
+`);
+
+const insertRunStmt = db.prepare(
+  'INSERT INTO runs (user_id, username, day, final_chips, hands_played, finished_at) VALUES (?, ?, ?, ?, ?, ?)',
+);
+const getRunByDayStmt = db.prepare('SELECT * FROM runs WHERE user_id = ? AND day = ?');
+const dailyTopStmt = db.prepare(
+  'SELECT user_id, username, final_chips, hands_played FROM runs WHERE day = ? ORDER BY final_chips DESC, hands_played ASC LIMIT ?',
+);
+const periodTopStmt = db.prepare(
+  `SELECT user_id, username, MAX(final_chips) AS best, MIN(hands_played) AS fewest_hands
+   FROM runs WHERE day >= ?
+   GROUP BY user_id
+   ORDER BY best DESC, fewest_hands ASC
+   LIMIT ?`,
+);
+const allTimeTopStmt = db.prepare(
+  `SELECT user_id, username, MAX(final_chips) AS best, MIN(hands_played) AS fewest_hands
+   FROM runs
+   GROUP BY user_id
+   ORDER BY best DESC, fewest_hands ASC
+   LIMIT ?`,
+);
+const userDaysStmt = db.prepare(
+  'SELECT day FROM runs WHERE user_id = ? ORDER BY day DESC LIMIT 365',
+);
+const dayRanksStmt = db.prepare(
+  'SELECT user_id FROM runs WHERE day = ? ORDER BY final_chips DESC, hands_played ASC',
+);
+
+export function getTodayRun(userId, day) {
+  return getRunByDayStmt.get(userId, day);
+}
+
+export function recordRun(userId, username, day, finalChips, handsPlayed) {
+  insertRunStmt.run(userId, username, day, finalChips, handsPlayed, Date.now());
+}
+
+export function getDailyTop(day, limit = 10) {
+  return dailyTopStmt.all(day, limit);
+}
+
+export function getPeriodTop(sinceDay, limit = 10) {
+  return periodTopStmt.all(sinceDay, limit);
+}
+
+export function getAllTimeTop(limit = 10) {
+  return allTimeTopStmt.all(limit);
+}
+
+export function rankInDay(userId, day) {
+  const all = dayRanksStmt.all(day);
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].user_id === userId) return i + 1;
+  }
+  return null;
+}
+
+export function getUserStreak(userId) {
+  const days = userDaysStmt.all(userId).map(r => r.day);
+  if (days.length === 0) return { current: 0, best: 0 };
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const dayDates = days.map(d => new Date(d + 'T00:00:00').getTime());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+
+  let current = 0;
+  if (dayDates[0] >= todayMs - dayMs) {
+    current = 1;
+    for (let i = 1; i < dayDates.length; i++) {
+      if (Math.round((dayDates[i - 1] - dayDates[i]) / dayMs) === 1) current++;
+      else break;
+    }
+  }
+
+  let best = 1;
+  let cur = 1;
+  for (let i = 1; i < dayDates.length; i++) {
+    if (Math.round((dayDates[i - 1] - dayDates[i]) / dayMs) === 1) {
+      cur++;
+      best = Math.max(best, cur);
+    } else {
+      cur = 1;
+    }
+  }
+
+  return { current, best };
+}

@@ -16,20 +16,20 @@ try {
   // No manifest yet — fall back to text rendering until upload-emojis is run.
 }
 
-export function newDeck() {
+export function newDeck(rng = Math.random) {
   const deck = [];
   for (const suit of SUITS) {
     for (const rank of RANKS) {
       deck.push({ rank, suit });
     }
   }
-  return shuffle(deck);
+  return shuffle(deck, rng);
 }
 
-export function shuffle(arr) {
+export function shuffle(arr, rng = Math.random) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;

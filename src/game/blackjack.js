@@ -1,12 +1,12 @@
 import { newDeck, handTotal, isBlackjack } from './cards.js';
 
 function draw(game) {
-  if (game.deck.length === 0) game.deck = newDeck();
+  if (game.deck.length === 0) game.deck = newDeck(game.rng);
   return game.deck.pop();
 }
 
-export function startGame({ userId, channelId, bet }) {
-  const deck = newDeck();
+export function startGame({ userId, channelId, bet, rng }) {
+  const deck = newDeck(rng);
   const player = [deck.pop(), deck.pop()];
   const dealer = [deck.pop(), deck.pop()];
 
@@ -14,6 +14,7 @@ export function startGame({ userId, channelId, bet }) {
     userId,
     channelId,
     deck,
+    rng,
     hands: [{ cards: player, bet, doubled: false, finished: false }],
     dealer,
     currentHandIndex: 0,

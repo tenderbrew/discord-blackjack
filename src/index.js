@@ -31,8 +31,10 @@ client.on(Events.InteractionCreate, async interaction => {
       const command = client.commands.get(interaction.commandName);
       if (command) await command.execute(interaction);
     } else if (interaction.isButton()) {
-      if (interaction.customId.startsWith('bj:')) {
-        const command = client.commands.get('blackjack');
+      const ns = interaction.customId.split(':')[0];
+      const cmdName = ns === 'bj' ? 'blackjack' : ns === 'run' ? 'run' : null;
+      if (cmdName) {
+        const command = client.commands.get(cmdName);
         if (command?.handleButton) await command.handleButton(interaction);
       }
     }
