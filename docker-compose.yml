@@ -1,0 +1,9 @@
+services:
+  blackjack:
+    build: .
+    image: discord-blackjack
+    container_name: discord-blackjack
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data

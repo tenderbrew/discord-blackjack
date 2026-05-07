@@ -38,7 +38,7 @@ function escapeXml(s) {
 function labelSvg(text, width, color) {
   return Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${LABEL_H}">` +
-    `<text x="2" y="28" font-family="Segoe UI, 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="${color}">${escapeXml(text)}</text>` +
+    `<text x="2" y="28" font-family="Segoe UI, 'Helvetica Neue', Arial, 'DejaVu Sans', sans-serif" font-size="26" font-weight="700" fill="${color}">${escapeXml(text)}</text>` +
     `</svg>`,
   );
 }
