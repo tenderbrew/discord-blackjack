@@ -1,0 +1,22 @@
+{
+  "name": "discord-blackjack",
+  "version": "1.0.0",
+  "description": "Blackjack bot for personal Discord server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "upload-emojis": "node scripts/upload-emojis.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "sharp": "^0.34.5"
+  }
+}
