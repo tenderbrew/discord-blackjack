@@ -1,11 +1,13 @@
 import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '..', 'data');
+const BACKUPS_DIR = join(DATA_DIR, 'backups');
 mkdirSync(DATA_DIR, { recursive: true });
+mkdirSync(BACKUPS_DIR, { recursive: true });
 
 const db = new Database(join(DATA_DIR, 'blackjack.db'));
 db.pragma('journal_mode = WAL');
@@ -308,6 +310,20 @@ export function loadLiveGames(kind) {
 
 export function sweepStaleLiveGames(maxAgeMs) {
   return sweepStaleLiveGamesStmt.all(Date.now() - maxAgeMs);
+}
+
+export async function runBackup({ keep = 14 } = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const dest = join(BACKUPS_DIR, `blackjack-${today}.db`);
+  await db.backup(dest);
+  const files = readdirSync(BACKUPS_DIR)
+    .filter(f => /^blackjack-\d{4}-\d{2}-\d{2}\.db$/.test(f))
+    .sort();
+  while (files.length > keep) {
+    const old = files.shift();
+    try { unlinkSync(join(BACKUPS_DIR, old)); } catch {}
+  }
+  return { dest, count: files.length };
 }
 
 const insertRunStmt = db.prepare(

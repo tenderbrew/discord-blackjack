@@ -16,11 +16,15 @@ try {
   // No manifest yet — fall back to text rendering until upload-emojis is run.
 }
 
-export function newDeck(rng = Math.random) {
+export const DECKS_PER_SHOE = 6;
+
+export function newDeck(rng = Math.random, deckCount = DECKS_PER_SHOE) {
   const deck = [];
-  for (const suit of SUITS) {
-    for (const rank of RANKS) {
-      deck.push({ rank, suit });
+  for (let d = 0; d < deckCount; d++) {
+    for (const suit of SUITS) {
+      for (const rank of RANKS) {
+        deck.push({ rank, suit });
+      }
     }
   }
   return shuffle(deck, rng);

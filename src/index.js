@@ -3,12 +3,14 @@ import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'dis
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { accrueAll, sweepStaleLiveGames } from './db.js';
+import { accrueAll, runBackup, sweepStaleLiveGames } from './db.js';
 import { preloadCards } from './game/imageRender.js';
 
 const ACCRUAL_TICK_MS = 60 * 1000;
 const STALE_TTL_MS = 30 * 60 * 1000;
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const BACKUP_INITIAL_DELAY_MS = 30 * 1000;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -102,3 +104,14 @@ setInterval(() => {
     console.error('Sweep error:', err);
   }
 }, SWEEP_INTERVAL_MS);
+
+async function performBackup() {
+  try {
+    const { dest, count } = await runBackup();
+    console.log(`SQLite backup written: ${dest} (keeping ${count})`);
+  } catch (err) {
+    console.error('Backup failed:', err);
+  }
+}
+setTimeout(performBackup, BACKUP_INITIAL_DELAY_MS);
+setInterval(performBackup, BACKUP_INTERVAL_MS);
