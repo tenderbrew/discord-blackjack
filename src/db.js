@@ -46,7 +46,7 @@ db.exec(`
   );
 `);
 
-const XP_CURVE_VERSION = '2';
+const XP_CURVE_VERSION = '3';
 const getMetaStmt = db.prepare('SELECT value FROM meta WHERE key = ?');
 const setMetaStmt = db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
 const currentXpCurve = getMetaStmt.get('xp_curve_version');

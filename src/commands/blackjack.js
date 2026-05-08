@@ -2,7 +2,7 @@ import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as game from '../game/blackjack.js';
 import { buildGameMessage } from '../game/render.js';
 import { addXp, adjustChips, getBalance, getProfile } from '../db.js';
-import { MAX_LEVEL, formatTitleWithPrestige, levelFromXp, tierEmojiFor, xpForHand } from '../game/levels.js';
+import { MAX_LEVEL, formatTitleWithPrestige, levelFromXp, tierEmojiFor } from '../game/levels.js';
 
 const activeGames = new Map();
 
@@ -16,9 +16,9 @@ function buildLevelUpMessage(userId, newLevel, prestige) {
   return { content, allowedMentions: { parse: [] } };
 }
 
-function settleAndDetectLevelUp(userId, totalBet) {
+function settleAndDetectLevelUp(userId, net) {
   const before = getProfile(userId);
-  addXp(userId, xpForHand(totalBet));
+  addXp(userId, net);
   const after = getProfile(userId);
   const oldLevel = levelFromXp(before.xp).level;
   const newLevel = levelFromXp(after.xp).level;
@@ -57,7 +57,7 @@ export default {
 
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
-      const lvl = settleAndDetectLevelUp(userId, g.totalBet);
+      const lvl = settleAndDetectLevelUp(userId, g.result.net);
       await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
       if (lvl.leveledUp) {
         await interaction.followUp(buildLevelUpMessage(userId, lvl.newLevel, lvl.prestige));
@@ -126,7 +126,7 @@ export default {
     let lvl = null;
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
-      lvl = settleAndDetectLevelUp(userId, g.totalBet);
+      lvl = settleAndDetectLevelUp(userId, g.result.net);
       activeGames.delete(messageId);
     }
 

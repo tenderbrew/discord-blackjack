@@ -4,11 +4,7 @@ export const MAX_LEVEL = 100;
 export const MAX_PRESTIGE = 100;
 
 export function xpForLevelDelta(level) {
-  return 1000 + level * 40;
-}
-
-export function xpForHand(totalBet) {
-  return Math.min(200, 50 + Math.floor(totalBet / 20));
+  return 2500 + level * 100;
 }
 
 export function cumulativeXpForLevel(level) {
