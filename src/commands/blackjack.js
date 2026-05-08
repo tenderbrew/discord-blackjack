@@ -2,7 +2,7 @@ import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as game from '../game/blackjack.js';
 import { buildGameMessage } from '../game/render.js';
 import { addXp, adjustChips, getBalance, getProfile } from '../db.js';
-import { MAX_LEVEL, formatTitleWithPrestige, levelFromXp, tierEmojiFor } from '../game/levels.js';
+import { MAX_LEVEL, PUSH_XP, formatTitleWithPrestige, levelFromXp, tierEmojiFor } from '../game/levels.js';
 
 const activeGames = new Map();
 
@@ -18,7 +18,8 @@ function buildLevelUpMessage(userId, newLevel, prestige) {
 
 function settleAndDetectLevelUp(userId, net) {
   const before = getProfile(userId);
-  addXp(userId, net);
+  if (net > 0) addXp(userId, net);
+  else if (net === 0) addXp(userId, PUSH_XP);
   const after = getProfile(userId);
   const oldLevel = levelFromXp(before.xp).level;
   const newLevel = levelFromXp(after.xp).level;

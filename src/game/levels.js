@@ -2,6 +2,7 @@ import { TIER_COLORS, TIER_EMOJI, TITLES } from './titles.js';
 
 export const MAX_LEVEL = 100;
 export const MAX_PRESTIGE = 100;
+export const PUSH_XP = 50;
 
 export function xpForLevelDelta(level) {
   return 2500 + level * 100;
