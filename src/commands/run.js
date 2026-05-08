@@ -63,6 +63,22 @@ export default {
     const parts = interaction.customId.split(':');
     const action = parts[1];
 
+    // "Next hand" advances the run AND posts a fresh message for the next phase,
+    // freezing the current post-hand message in place as a historical record.
+    if (action === 'next') {
+      await interaction.editReply(await buildRunMessage(r, { frozen: true }));
+      run.continueAfterHand(r);
+      if (r.phase === 'done') {
+        recordRun(r.userId, r.username, r.day, r.bankroll, r.handsPlayed);
+      }
+      const newMsg = await interaction.followUp(await buildRunMessage(r));
+      activeRuns.delete(messageId);
+      if (r.phase !== 'done') {
+        activeRuns.set(newMsg.id, r);
+      }
+      return;
+    }
+
     if (action === 'bet') {
       const bet = parseInt(parts[2], 10);
       run.placeBet(r, bet);
@@ -74,13 +90,6 @@ export default {
       run.runDouble(r);
     } else if (action === 'split') {
       run.runSplit(r);
-    } else if (action === 'next') {
-      run.continueAfterHand(r);
-    }
-
-    if (r.phase === 'done') {
-      recordRun(r.userId, r.username, r.day, r.bankroll, r.handsPlayed);
-      activeRuns.delete(messageId);
     }
 
     await interaction.editReply(await buildRunMessage(r));
@@ -124,7 +133,7 @@ function lastHandResultText(r) {
   return `${labels.join('  ·  ')}\n**Net:** ${sign}${abs} chips`;
 }
 
-async function buildRunMessage(r) {
+async function buildRunMessage(r, { frozen = false } = {}) {
   const embed = new EmbedBuilder().setTitle('🂡 Daily Run').setColor(getColor(r));
 
   if (r.phase === 'awaiting-bet') {
@@ -164,6 +173,9 @@ async function buildRunMessage(r) {
     const imageBuf = await buildGameImage(r.currentGame, { hideHole: false });
     const attachment = new AttachmentBuilder(imageBuf, { name: 'hand.png' });
     embed.setImage('attachment://hand.png');
+    if (frozen) {
+      return { embeds: [embed], components: [], files: [attachment] };
+    }
     const nextLabel = willEnd ? 'See final score' : `Next hand (${r.handsPlayed + 1}/${r.maxHands})`;
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('run:next').setLabel(nextLabel).setStyle(ButtonStyle.Primary),
