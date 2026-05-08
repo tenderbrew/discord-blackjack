@@ -1,4 +1,4 @@
-import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags, ModalBuilder, SlashCommandBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import * as run from '../game/run.js';
 import { MIN_BET, STARTING_BANKROLL } from '../game/run.js';
 import { dayKey, deckRngForHand } from '../game/rng.js';
@@ -60,10 +60,31 @@ export default {
       return;
     }
 
-    await interaction.deferUpdate();
-
     const parts = interaction.customId.split(':');
     const action = parts[1];
+
+    // Modal-opening actions must respond *with* the modal — no deferUpdate first.
+    if (action === 'bet-custom') {
+      const modal = new ModalBuilder()
+        .setCustomId('run:bet-modal')
+        .setTitle('Place a custom bet')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('amount')
+              .setLabel('Bet amount')
+              .setPlaceholder(`${MIN_BET}–${r.bankroll}`)
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMinLength(1)
+              .setMaxLength(10),
+          ),
+        );
+      await interaction.showModal(modal);
+      return;
+    }
+
+    await interaction.deferUpdate();
 
     // "Next hand" advances the run AND posts a fresh message for the next phase,
     // freezing the current post-hand message in place as a historical record.
@@ -121,6 +142,49 @@ export default {
   dropFromMemory(messageId) {
     activeRuns.delete(messageId);
   },
+
+  async handleModal(interaction) {
+    if (interaction.customId !== 'run:bet-modal') return;
+    const messageId = interaction.message?.id;
+    if (!messageId) {
+      await interaction.reply({ content: 'No active run found.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+    const r = activeRuns.get(messageId);
+    if (!r) {
+      await interaction.reply({
+        content: 'This run has expired (bot may have restarted). Start a new one with `/run`.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (interaction.user.id !== r.userId) {
+      await interaction.reply({ content: "This isn't your run.", flags: MessageFlags.Ephemeral });
+      return;
+    }
+    if (r.phase !== 'awaiting-bet') {
+      await interaction.reply({
+        content: 'Run is not awaiting a bet right now.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const raw = interaction.fields.getTextInputValue('amount').trim();
+    const bet = parseInt(raw, 10);
+    if (!Number.isInteger(bet) || String(bet) !== raw.replace(/^0+(?=\d)/, '') || bet < MIN_BET || bet > r.bankroll) {
+      await interaction.reply({
+        content: `Invalid bet. Enter a whole number between **${MIN_BET}** and **${r.bankroll}**.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+    run.placeBet(r, bet);
+    saveLiveGame(messageId, r.userId, 'run', r);
+    await interaction.editReply(await buildRunMessage(r));
+  },
 };
 
 function handIcon(entry) {
@@ -173,7 +237,7 @@ async function buildRunMessage(r, { frozen = false } = {}) {
     }
     lines.push('', `Place your bet for hand ${r.handsPlayed + 1}.`);
     embed.setDescription(lines.join('\n'));
-    return { embeds: [embed], components: [buildBetButtons(r)], files: [] };
+    return { embeds: [embed], components: buildBetButtons(r), files: [] };
   }
 
   if (r.phase === 'in-hand') {
@@ -229,16 +293,19 @@ async function buildRunMessage(r, { frozen = false } = {}) {
 }
 
 function buildBetButtons(r) {
-  const row = new ActionRowBuilder();
+  const presetRow = new ActionRowBuilder();
   const candidates = [10, 50, 100, 250, r.bankroll];
   const valid = [...new Set(candidates.filter(v => v >= MIN_BET && v <= r.bankroll))].sort((a, b) => a - b);
   for (const v of valid.slice(0, 5)) {
     const isAllIn = v === r.bankroll;
     const label = isAllIn ? `All-in (${v})` : `${v}`;
     const style = isAllIn ? ButtonStyle.Danger : ButtonStyle.Primary;
-    row.addComponents(new ButtonBuilder().setCustomId(`run:bet:${v}`).setLabel(label).setStyle(style));
+    presetRow.addComponents(new ButtonBuilder().setCustomId(`run:bet:${v}`).setLabel(label).setStyle(style));
   }
-  return row;
+  const customRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('run:bet-custom').setLabel('Custom amount').setStyle(ButtonStyle.Secondary),
+  );
+  return [presetRow, customRow];
 }
 
 function buildHandButtons(r) {

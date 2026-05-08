@@ -61,6 +61,13 @@ client.on(Events.InteractionCreate, async interaction => {
         const command = client.commands.get(cmdName);
         if (command?.handleButton) await command.handleButton(interaction);
       }
+    } else if (interaction.isModalSubmit()) {
+      const ns = interaction.customId.split(':')[0];
+      const cmdName = ns === 'run' ? 'run' : null;
+      if (cmdName) {
+        const command = client.commands.get(cmdName);
+        if (command?.handleModal) await command.handleModal(interaction);
+      }
     }
   } catch (err) {
     console.error('Interaction error:', err);
