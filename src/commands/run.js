@@ -116,6 +116,10 @@ export default {
     }
     return rows.length;
   },
+
+  dropFromMemory(messageId) {
+    activeRuns.delete(messageId);
+  },
 };
 
 function handIcon(entry) {

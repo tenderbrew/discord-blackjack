@@ -154,4 +154,8 @@ export default {
     }
     return rows.length;
   },
+
+  dropFromMemory(messageId) {
+    activeGames.delete(messageId);
+  },
 };

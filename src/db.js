@@ -214,6 +214,9 @@ const upsertLiveGameStmt = db.prepare(
 );
 const deleteLiveGameStmt = db.prepare('DELETE FROM live_games WHERE message_id = ?');
 const loadLiveGamesByKindStmt = db.prepare('SELECT message_id, user_id, state FROM live_games WHERE kind = ?');
+const sweepStaleLiveGamesStmt = db.prepare(
+  'DELETE FROM live_games WHERE updated_at < ? RETURNING message_id, kind',
+);
 
 export function saveLiveGame(messageId, userId, kind, state) {
   upsertLiveGameStmt.run(messageId, userId, kind, JSON.stringify(state), Date.now());
@@ -225,6 +228,10 @@ export function deleteLiveGame(messageId) {
 
 export function loadLiveGames(kind) {
   return loadLiveGamesByKindStmt.all(kind);
+}
+
+export function sweepStaleLiveGames(maxAgeMs) {
+  return sweepStaleLiveGamesStmt.all(Date.now() - maxAgeMs);
 }
 
 const insertRunStmt = db.prepare(

@@ -3,10 +3,12 @@ import { Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'dis
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { accrueAll } from './db.js';
+import { accrueAll, sweepStaleLiveGames } from './db.js';
 import { preloadCards } from './game/imageRender.js';
 
 const ACCRUAL_TICK_MS = 60 * 1000;
+const STALE_TTL_MS = 30 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -79,3 +81,17 @@ setInterval(() => {
     console.error('Accrual tick error:', err);
   }
 }, ACCRUAL_TICK_MS);
+
+setInterval(() => {
+  try {
+    const swept = sweepStaleLiveGames(STALE_TTL_MS);
+    if (swept.length === 0) return;
+    for (const row of swept) {
+      const cmd = client.commands.get(row.kind);
+      cmd?.dropFromMemory?.(row.message_id);
+    }
+    console.log(`Swept ${swept.length} stale live game(s).`);
+  } catch (err) {
+    console.error('Sweep error:', err);
+  }
+}, SWEEP_INTERVAL_MS);
