@@ -30,6 +30,18 @@ client.once(Events.ClientReady, async c => {
   } catch (err) {
     console.error('Card preload failed:', err);
   }
+  for (const command of client.commands.values()) {
+    if (typeof command.restore === 'function') {
+      try {
+        const count = await command.restore();
+        if (count > 0) {
+          console.log(`Restored ${count} live ${command.data.name} game(s).`);
+        }
+      } catch (err) {
+        console.error(`Restore failed for ${command.data.name}:`, err);
+      }
+    }
+  }
 });
 
 client.on(Events.InteractionCreate, async interaction => {

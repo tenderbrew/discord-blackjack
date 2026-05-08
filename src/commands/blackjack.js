@@ -1,7 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as game from '../game/blackjack.js';
 import { buildGameMessage } from '../game/render.js';
-import { addXp, adjustChips, getBalance, getProfile } from '../db.js';
+import { addXp, adjustChips, deleteLiveGame, getBalance, getProfile, loadLiveGames, saveLiveGame } from '../db.js';
 import { MAX_LEVEL, PUSH_XP, formatTitleWithPrestige, levelFromXp, tierEmojiFor } from '../game/levels.js';
 
 const activeGames = new Map();
@@ -69,6 +69,7 @@ export default {
     await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
     const message = await interaction.fetchReply();
     activeGames.set(message.id, g);
+    saveLiveGame(message.id, userId, 'blackjack', g);
   },
 
   async handleButton(interaction) {
@@ -129,6 +130,9 @@ export default {
       adjustChips(userId, g.totalBet + g.result.net);
       lvl = settleAndDetectLevelUp(userId, g.result.net);
       activeGames.delete(messageId);
+      deleteLiveGame(messageId);
+    } else {
+      saveLiveGame(messageId, userId, 'blackjack', g);
     }
 
     await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
@@ -136,5 +140,18 @@ export default {
     if (lvl?.leveledUp) {
       await interaction.followUp(buildLevelUpMessage(userId, lvl.newLevel, lvl.prestige));
     }
+  },
+
+  restore() {
+    const rows = loadLiveGames('blackjack');
+    for (const row of rows) {
+      try {
+        const g = JSON.parse(row.state);
+        activeGames.set(row.message_id, g);
+      } catch (err) {
+        console.error(`Failed to restore blackjack game ${row.message_id}:`, err);
+      }
+    }
+    return rows.length;
   },
 };

@@ -194,7 +194,38 @@ db.exec(`
     PRIMARY KEY (user_id, day)
   );
   CREATE INDEX IF NOT EXISTS idx_runs_day_score ON runs (day, final_chips DESC);
+
+  CREATE TABLE IF NOT EXISTS live_games (
+    message_id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    state TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_live_games_kind ON live_games (kind);
 `);
+
+const upsertLiveGameStmt = db.prepare(
+  `INSERT INTO live_games (message_id, user_id, kind, state, updated_at)
+   VALUES (?, ?, ?, ?, ?)
+   ON CONFLICT (message_id) DO UPDATE SET
+     state = excluded.state,
+     updated_at = excluded.updated_at`,
+);
+const deleteLiveGameStmt = db.prepare('DELETE FROM live_games WHERE message_id = ?');
+const loadLiveGamesByKindStmt = db.prepare('SELECT message_id, user_id, state FROM live_games WHERE kind = ?');
+
+export function saveLiveGame(messageId, userId, kind, state) {
+  upsertLiveGameStmt.run(messageId, userId, kind, JSON.stringify(state), Date.now());
+}
+
+export function deleteLiveGame(messageId) {
+  deleteLiveGameStmt.run(messageId);
+}
+
+export function loadLiveGames(kind) {
+  return loadLiveGamesByKindStmt.all(kind);
+}
 
 const insertRunStmt = db.prepare(
   'INSERT INTO runs (user_id, username, day, final_chips, hands_played, finished_at) VALUES (?, ?, ?, ?, ?, ?)',

@@ -1,10 +1,10 @@
 import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as run from '../game/run.js';
 import { MIN_BET, STARTING_BANKROLL } from '../game/run.js';
-import { dayKey } from '../game/rng.js';
+import { dayKey, deckRngForHand } from '../game/rng.js';
 import { canDouble, canSplit } from '../game/blackjack.js';
 import { buildGameImage } from '../game/imageRender.js';
-import { getTodayRun, recordRun, rankInDay, getUserStreak } from '../db.js';
+import { deleteLiveGame, getTodayRun, getUserStreak, loadLiveGames, rankInDay, recordRun, saveLiveGame } from '../db.js';
 
 const activeRuns = new Map();
 
@@ -41,6 +41,7 @@ export default {
     await interaction.editReply(await buildRunMessage(r));
     const message = await interaction.fetchReply();
     activeRuns.set(message.id, r);
+    saveLiveGame(message.id, userId, 'run', r);
   },
 
   async handleButton(interaction) {
@@ -73,8 +74,10 @@ export default {
       }
       const newMsg = await interaction.followUp(await buildRunMessage(r));
       activeRuns.delete(messageId);
+      deleteLiveGame(messageId);
       if (r.phase !== 'done') {
         activeRuns.set(newMsg.id, r);
+        saveLiveGame(newMsg.id, r.userId, 'run', r);
       }
       return;
     }
@@ -92,7 +95,26 @@ export default {
       run.runSplit(r);
     }
 
+    saveLiveGame(messageId, r.userId, 'run', r);
     await interaction.editReply(await buildRunMessage(r));
+  },
+
+  restore() {
+    const rows = loadLiveGames('run');
+    for (const row of rows) {
+      try {
+        const r = JSON.parse(row.state);
+        if (r.currentGame) {
+          // Re-derive the per-hand deterministic RNG so any rare mid-hand
+          // reshuffle still matches the run's daily seed.
+          r.currentGame.rng = deckRngForHand(r.day, r.handsPlayed + 1);
+        }
+        activeRuns.set(row.message_id, r);
+      } catch (err) {
+        console.error(`Failed to restore run ${row.message_id}:`, err);
+      }
+    }
+    return rows.length;
   },
 };
 
