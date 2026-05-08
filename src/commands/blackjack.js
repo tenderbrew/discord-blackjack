@@ -62,7 +62,8 @@ export default {
       recordHandStats(userId, { outcomes: g.result.outcomes, net: g.result.net, totalBet: g.totalBet });
       const lvl = settleAndDetectLevelUp(userId, g.result.net);
       const profile = getProfile(userId);
-      await interaction.editReply(await buildGameMessage(g, { username, balance: profile.chips, prestige: profile.prestige }));
+      const levelUp = lvl.leveledUp ? { newLevel: lvl.newLevel, prestige: lvl.prestige } : null;
+      await interaction.editReply(await buildGameMessage(g, { username, balance: profile.chips, prestige: profile.prestige, levelUp }));
       if (lvl.leveledUp) {
         await interaction.followUp(buildLevelUpMessage(userId, lvl.newLevel, lvl.prestige));
       }
@@ -141,7 +142,8 @@ export default {
     }
 
     const profile = getProfile(userId);
-    await interaction.editReply(await buildGameMessage(g, { username, balance: profile.chips, prestige: profile.prestige }));
+    const levelUp = lvl?.leveledUp ? { newLevel: lvl.newLevel, prestige: lvl.prestige } : null;
+    await interaction.editReply(await buildGameMessage(g, { username, balance: profile.chips, prestige: profile.prestige, levelUp }));
 
     if (lvl?.leveledUp) {
       await interaction.followUp(buildLevelUpMessage(userId, lvl.newLevel, lvl.prestige));
