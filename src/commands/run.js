@@ -4,7 +4,7 @@ import { MIN_BET, STARTING_BANKROLL } from '../game/run.js';
 import { dayKey, deckRngForHand } from '../game/rng.js';
 import { canDouble, canSplit } from '../game/blackjack.js';
 import { buildGameImage } from '../game/imageRender.js';
-import { deleteLiveGame, getTodayRun, getUserStreak, loadLiveGames, rankInDay, recordRun, saveLiveGame } from '../db.js';
+import { deleteLiveGame, getTodayRun, getUserStreak, loadLiveGames, rankInDay, recordRun, saveLiveGame, seenAs } from '../db.js';
 
 const activeRuns = new Map();
 
@@ -16,6 +16,7 @@ export default {
   async execute(interaction) {
     const userId = interaction.user.id;
     const username = interaction.user.username;
+    seenAs(userId, username);
     const day = dayKey();
 
     const existing = getTodayRun(userId, day);

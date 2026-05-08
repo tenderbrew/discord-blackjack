@@ -46,6 +46,9 @@ for (const col of [
     db.exec(`ALTER TABLE players ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`);
   }
 }
+if (!existingCols.has('username')) {
+  db.exec(`ALTER TABLE players ADD COLUMN username TEXT NOT NULL DEFAULT ''`);
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS meta (
@@ -145,6 +148,13 @@ function touch(userId) {
   return accrue(userId);
 }
 
+const setUsernameStmt = db.prepare('UPDATE players SET username = ? WHERE user_id = ? AND username != ?');
+
+export function seenAs(userId, username) {
+  touch(userId);
+  if (username) setUsernameStmt.run(username, userId, username);
+}
+
 export function getBalance(userId) {
   touch(userId);
   return getPlayerStmt.get(userId).chips;
@@ -230,6 +240,24 @@ export function getStats(userId) {
   touch(userId);
   return getPlayerStmt.get(userId);
 }
+
+const topChipsStmt = db.prepare(
+  "SELECT user_id, username, chips FROM players WHERE username != '' ORDER BY chips DESC LIMIT ?",
+);
+const topLevelStmt = db.prepare(
+  "SELECT user_id, username, prestige, xp FROM players WHERE username != '' ORDER BY prestige DESC, xp DESC LIMIT ?",
+);
+const topWageredStmt = db.prepare(
+  "SELECT user_id, username, lifetime_wagered FROM players WHERE username != '' AND lifetime_wagered > 0 ORDER BY lifetime_wagered DESC LIMIT ?",
+);
+const topBiggestStmt = db.prepare(
+  "SELECT user_id, username, biggest_win FROM players WHERE username != '' AND biggest_win > 0 ORDER BY biggest_win DESC LIMIT ?",
+);
+
+export function getTopChips(limit = 10) { return topChipsStmt.all(limit); }
+export function getTopLevel(limit = 10) { return topLevelStmt.all(limit); }
+export function getTopWagered(limit = 10) { return topWageredStmt.all(limit); }
+export function getTopBiggest(limit = 10) { return topBiggestStmt.all(limit); }
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS runs (

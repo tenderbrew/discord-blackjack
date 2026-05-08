@@ -1,7 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as game from '../game/blackjack.js';
 import { buildGameMessage } from '../game/render.js';
-import { addXp, adjustChips, deleteLiveGame, getBalance, getProfile, loadLiveGames, recordHandStats, saveLiveGame } from '../db.js';
+import { addXp, adjustChips, deleteLiveGame, getBalance, getProfile, loadLiveGames, recordHandStats, saveLiveGame, seenAs } from '../db.js';
 import { MAX_LEVEL, PUSH_XP, formatTitleWithPrestige, levelFromXp, tierEmojiFor } from '../game/levels.js';
 
 const activeGames = new Map();
@@ -40,6 +40,7 @@ export default {
   async execute(interaction) {
     const userId = interaction.user.id;
     const username = interaction.user.username;
+    seenAs(userId, username);
     const bet = interaction.options.getInteger('bet');
 
     const balance = getBalance(userId);

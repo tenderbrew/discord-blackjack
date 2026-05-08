@@ -1,5 +1,5 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { getStats } from '../db.js';
+import { getStats, seenAs } from '../db.js';
 import { formatTitleWithPrestige, levelFromXp, tierColorFor, tierEmojiFor } from '../game/levels.js';
 
 export default {
@@ -11,7 +11,9 @@ export default {
         .setDescription("Whose stats to look up (defaults to you)")),
 
   async execute(interaction) {
+    seenAs(interaction.user.id, interaction.user.username);
     const target = interaction.options.getUser('user') ?? interaction.user;
+    seenAs(target.id, target.username);
     const s = getStats(target.id);
     const { level } = levelFromXp(s.xp);
     const title = formatTitleWithPrestige(level, s.prestige);

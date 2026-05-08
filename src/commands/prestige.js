@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { getProfile, prestigePlayer } from '../db.js';
+import { getProfile, prestigePlayer, seenAs } from '../db.js';
 import { MAX_LEVEL, MAX_PRESTIGE, formatTitleWithPrestige, levelFromXp, tierColorFor, tierEmojiFor, titleFor } from '../game/levels.js';
 
 export default {
@@ -9,6 +9,7 @@ export default {
 
   async execute(interaction) {
     const userId = interaction.user.id;
+    seenAs(userId, interaction.user.username);
     const profile = getProfile(userId);
     const { level, isMaxLevel } = levelFromXp(profile.xp);
 
