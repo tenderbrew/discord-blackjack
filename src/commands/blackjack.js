@@ -1,9 +1,29 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as game from '../game/blackjack.js';
 import { buildGameMessage } from '../game/render.js';
-import { addXp, adjustChips, getBalance } from '../db.js';
+import { addXp, adjustChips, getBalance, getProfile } from '../db.js';
+import { MAX_LEVEL, formatTitleWithPrestige, levelFromXp, tierEmojiFor } from '../game/levels.js';
 
 const activeGames = new Map();
+
+function buildLevelUpMessage(userId, newLevel, prestige) {
+  const title = formatTitleWithPrestige(newLevel, prestige);
+  const emoji = tierEmojiFor(newLevel);
+  let content = `🎉 <@${userId}> leveled up to ${emoji}  **${title}**  *(Level ${newLevel})*`;
+  if (newLevel === MAX_LEVEL) {
+    content += `\n👑 **Max level reached.** Run \`/prestige\` to ascend.`;
+  }
+  return { content, allowedMentions: { parse: [] } };
+}
+
+function settleAndDetectLevelUp(userId, totalBet) {
+  const before = getProfile(userId);
+  addXp(userId, totalBet);
+  const after = getProfile(userId);
+  const oldLevel = levelFromXp(before.xp).level;
+  const newLevel = levelFromXp(after.xp).level;
+  return { leveledUp: newLevel > oldLevel, newLevel, prestige: after.prestige };
+}
 
 export default {
   data: new SlashCommandBuilder()
@@ -37,8 +57,11 @@ export default {
 
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
-      addXp(userId, g.totalBet);
+      const lvl = settleAndDetectLevelUp(userId, g.totalBet);
       await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
+      if (lvl.leveledUp) {
+        await interaction.followUp(buildLevelUpMessage(userId, lvl.newLevel, lvl.prestige));
+      }
       return;
     }
 
@@ -100,12 +123,17 @@ export default {
       game.split(g);
     }
 
+    let lvl = null;
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
-      addXp(userId, g.totalBet);
+      lvl = settleAndDetectLevelUp(userId, g.totalBet);
       activeGames.delete(messageId);
     }
 
     await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
+
+    if (lvl?.leveledUp) {
+      await interaction.followUp(buildLevelUpMessage(userId, lvl.newLevel, lvl.prestige));
+    }
   },
 };

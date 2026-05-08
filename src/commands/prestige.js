@@ -65,14 +65,18 @@ export default {
 
     prestigePlayer(userId);
     const after = getProfile(userId);
-    const embed = new EmbedBuilder()
-      .setTitle('🎉  You have ascended.')
-      .setColor(tierColorFor(MAX_LEVEL))
-      .setDescription([
-        `Now **★${after.prestige}** ${tierEmojiFor(1)} ${titleFor(1)}.`,
-        `The climb begins again — but the world remembers.`,
-      ].join('\n'));
 
-    await interaction.update({ embeds: [embed], components: [] });
+    await interaction.update({
+      content: `🎉  Ascended to **★${after.prestige}**.`,
+      embeds: [],
+      components: [],
+    });
+
+    await interaction.followUp({
+      content: [
+        `⭐ <@${userId}> has **ascended** to **★${after.prestige}** ${tierEmojiFor(1)} ${titleFor(1)}.`,
+        `The climb begins again — but the world remembers.`,
+      ].join('\n'),
+    });
   },
 };
