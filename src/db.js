@@ -39,6 +39,25 @@ if (!existingCols.has('prestige')) {
   db.exec('ALTER TABLE players ADD COLUMN prestige INTEGER NOT NULL DEFAULT 0');
 }
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+`);
+
+const XP_CURVE_VERSION = '2';
+const getMetaStmt = db.prepare('SELECT value FROM meta WHERE key = ?');
+const setMetaStmt = db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+const currentXpCurve = getMetaStmt.get('xp_curve_version');
+if (currentXpCurve?.value !== XP_CURVE_VERSION) {
+  const reset = db.prepare('UPDATE players SET xp = 0').run();
+  setMetaStmt.run('xp_curve_version', XP_CURVE_VERSION);
+  if (reset.changes > 0) {
+    console.log(`XP curve v${XP_CURVE_VERSION}: reset xp on ${reset.changes} player(s).`);
+  }
+}
+
 export const STARTING_CHIPS = 1000;
 
 const HOUR_MS = 60 * 60 * 1000;
