@@ -38,6 +38,14 @@ if (!existingCols.has('xp')) {
 if (!existingCols.has('prestige')) {
   db.exec('ALTER TABLE players ADD COLUMN prestige INTEGER NOT NULL DEFAULT 0');
 }
+for (const col of [
+  'hands_played', 'hands_won', 'hands_lost', 'hands_pushed', 'hands_blackjack',
+  'biggest_win', 'biggest_loss', 'lifetime_wagered', 'lifetime_won', 'lifetime_lost',
+]) {
+  if (!existingCols.has(col)) {
+    db.exec(`ALTER TABLE players ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`);
+  }
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS meta (
@@ -161,6 +169,20 @@ export function accrueAll() {
 
 const addXpStmt = db.prepare('UPDATE players SET xp = xp + ? WHERE user_id = ?');
 const setPrestigeStmt = db.prepare('UPDATE players SET prestige = prestige + 1, xp = 0 WHERE user_id = ?');
+const recordHandStatsStmt = db.prepare(`
+  UPDATE players SET
+    hands_played = hands_played + ?,
+    hands_won = hands_won + ?,
+    hands_lost = hands_lost + ?,
+    hands_pushed = hands_pushed + ?,
+    hands_blackjack = hands_blackjack + ?,
+    biggest_win = MAX(biggest_win, ?),
+    biggest_loss = MAX(biggest_loss, ?),
+    lifetime_wagered = lifetime_wagered + ?,
+    lifetime_won = lifetime_won + ?,
+    lifetime_lost = lifetime_lost + ?
+  WHERE user_id = ?
+`);
 
 export function addXp(userId, amount) {
   if (!Number.isFinite(amount) || amount <= 0) return;
@@ -181,6 +203,32 @@ export function getProfile(userId) {
 export function prestigePlayer(userId) {
   touch(userId);
   setPrestigeStmt.run(userId);
+}
+
+export function recordHandStats(userId, { outcomes, net, totalBet }) {
+  touch(userId);
+  let won = 0, lost = 0, pushed = 0, bj = 0;
+  for (const o of outcomes) {
+    if (o === 'win' || o === 'blackjack') won++;
+    if (o === 'blackjack') bj++;
+    if (o === 'push') pushed++;
+    if (o === 'loss' || o === 'bust' || o === 'dealer_blackjack') lost++;
+  }
+  recordHandStatsStmt.run(
+    outcomes.length,
+    won, lost, pushed, bj,
+    Math.max(0, net),
+    Math.max(0, -net),
+    totalBet,
+    Math.max(0, net),
+    Math.max(0, -net),
+    userId,
+  );
+}
+
+export function getStats(userId) {
+  touch(userId);
+  return getPlayerStmt.get(userId);
 }
 
 db.exec(`

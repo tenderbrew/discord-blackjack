@@ -1,7 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as game from '../game/blackjack.js';
 import { buildGameMessage } from '../game/render.js';
-import { addXp, adjustChips, deleteLiveGame, getBalance, getProfile, loadLiveGames, saveLiveGame } from '../db.js';
+import { addXp, adjustChips, deleteLiveGame, getBalance, getProfile, loadLiveGames, recordHandStats, saveLiveGame } from '../db.js';
 import { MAX_LEVEL, PUSH_XP, formatTitleWithPrestige, levelFromXp, tierEmojiFor } from '../game/levels.js';
 
 const activeGames = new Map();
@@ -58,6 +58,7 @@ export default {
 
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
+      recordHandStats(userId, { outcomes: g.result.outcomes, net: g.result.net, totalBet: g.totalBet });
       const lvl = settleAndDetectLevelUp(userId, g.result.net);
       await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
       if (lvl.leveledUp) {
@@ -128,6 +129,7 @@ export default {
     let lvl = null;
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
+      recordHandStats(userId, { outcomes: g.result.outcomes, net: g.result.net, totalBet: g.totalBet });
       lvl = settleAndDetectLevelUp(userId, g.result.net);
       activeGames.delete(messageId);
       deleteLiveGame(messageId);
