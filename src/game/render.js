@@ -1,10 +1,12 @@
 import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { canDouble, canSplit } from './blackjack.js';
 import { buildGameImage } from './imageRender.js';
+import { prestigeOrderFor } from './levels.js';
 
-export async function buildGameMessage(game, { username, balance } = {}) {
+export async function buildGameMessage(game, { username, balance, prestige = 0 } = {}) {
+  const order = prestigeOrderFor(prestige);
   const embed = new EmbedBuilder()
-    .setTitle('🂡 Blackjack')
+    .setTitle(order ? `${order.emoji}  Blackjack — ${order.name}` : '🂡 Blackjack')
     .setColor(getColor(game));
 
   const showHole = game.phase !== 'player';

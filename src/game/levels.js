@@ -9,6 +9,25 @@ export function prestigeMultiplier(prestige) {
   return 1 + prestige * PRESTIGE_SCALE_PER_STAR;
 }
 
+export const PRESTIGE_ORDERS = [
+  { name: 'Order of the Vine',     emoji: '🌿' },
+  { name: 'Order of the Hammer',   emoji: '🔨' },
+  { name: 'Order of the Hawk',     emoji: '🦅' },
+  { name: 'Order of the Stag',     emoji: '🦌' },
+  { name: 'Order of the Lion',     emoji: '🦁' },
+  { name: 'Order of the Wolf',     emoji: '🐺' },
+  { name: 'Order of the Sun',      emoji: '☀️' },
+  { name: 'Order of the Star',     emoji: '🌟' },
+  { name: 'Order of the Dragon',   emoji: '🐉' },
+  { name: 'Order of Eternity',     emoji: '♾️' },
+];
+
+export function prestigeOrderFor(prestige) {
+  if (!prestige || prestige < 1) return null;
+  const idx = Math.min(Math.floor((prestige - 1) / 10), PRESTIGE_ORDERS.length - 1);
+  return PRESTIGE_ORDERS[idx];
+}
+
 export function xpForLevelDelta(level, prestige = 0) {
   return Math.floor((2500 + level * 100) * prestigeMultiplier(prestige));
 }

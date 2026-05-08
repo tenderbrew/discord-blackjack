@@ -4,7 +4,8 @@ import { MIN_BET, STARTING_BANKROLL } from '../game/run.js';
 import { dayKey, deckRngForHand } from '../game/rng.js';
 import { canDouble, canSplit } from '../game/blackjack.js';
 import { buildGameImage } from '../game/imageRender.js';
-import { deleteLiveGame, getTodayRun, getUserStreak, loadLiveGames, rankInDay, recordRun, saveLiveGame, seenAs } from '../db.js';
+import { deleteLiveGame, getProfile, getTodayRun, getUserStreak, loadLiveGames, rankInDay, recordRun, saveLiveGame, seenAs } from '../db.js';
+import { prestigeOrderFor } from '../game/levels.js';
 
 const activeRuns = new Map();
 
@@ -225,7 +226,10 @@ function lastHandResultText(r) {
 }
 
 async function buildRunMessage(r, { frozen = false } = {}) {
-  const embed = new EmbedBuilder().setTitle('🂡 Daily Run').setColor(getColor(r));
+  const profile = getProfile(r.userId);
+  const order = prestigeOrderFor(profile.prestige);
+  const titleText = order ? `${order.emoji}  Daily Run — ${order.name}` : '🂡 Daily Run';
+  const embed = new EmbedBuilder().setTitle(titleText).setColor(getColor(r));
 
   if (r.phase === 'awaiting-bet') {
     const lines = [
