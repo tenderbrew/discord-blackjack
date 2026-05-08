@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { getProfile, prestigePlayer, seenAs } from '../db.js';
-import { MAX_LEVEL, MAX_PRESTIGE, formatTitleWithPrestige, levelFromXp, tierColorFor, tierEmojiFor, titleFor } from '../game/levels.js';
+import { MAX_LEVEL, MAX_PRESTIGE, formatTitleWithPrestige, levelFromXp, prestigeMultiplier, tierColorFor, tierEmojiFor, titleFor } from '../game/levels.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -11,7 +11,7 @@ export default {
     const userId = interaction.user.id;
     seenAs(userId, interaction.user.username);
     const profile = getProfile(userId);
-    const { level, isMaxLevel } = levelFromXp(profile.xp);
+    const { level, isMaxLevel } = levelFromXp(profile.xp, profile.prestige);
 
     if (!isMaxLevel) {
       await interaction.reply({
@@ -30,6 +30,8 @@ export default {
     }
 
     const nextPrestige = profile.prestige + 1;
+    const nextMult = prestigeMultiplier(nextPrestige);
+    const currentMult = prestigeMultiplier(profile.prestige);
     const embed = new EmbedBuilder()
       .setTitle('Ascend?')
       .setColor(tierColorFor(MAX_LEVEL))
@@ -37,6 +39,8 @@ export default {
         `You are currently **${formatTitleWithPrestige(MAX_LEVEL, profile.prestige)}**.`,
         ``,
         `Ascending will reset you to **Level 1** (${tierEmojiFor(1)} ${titleFor(1)}) but mark you with **★${nextPrestige}** for the climb to come.`,
+        ``,
+        `**Warning:** the curve scales with each prestige. Your next climb requires **${nextMult}× XP** per level (was ${currentMult}×). The challenge — and the bragging rights — only get bigger.`,
         ``,
         `Your chips and daily-run history are untouched.`,
       ].join('\n'));

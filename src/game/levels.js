@@ -3,22 +3,27 @@ import { TIER_COLORS, TIER_EMOJI, TITLES } from './titles.js';
 export const MAX_LEVEL = 100;
 export const MAX_PRESTIGE = 100;
 export const PUSH_XP = 50;
+export const PRESTIGE_SCALE_PER_STAR = 0.25;
 
-export function xpForLevelDelta(level) {
-  return 2500 + level * 100;
+export function prestigeMultiplier(prestige) {
+  return 1 + prestige * PRESTIGE_SCALE_PER_STAR;
 }
 
-export function cumulativeXpForLevel(level) {
+export function xpForLevelDelta(level, prestige = 0) {
+  return Math.floor((2500 + level * 100) * prestigeMultiplier(prestige));
+}
+
+export function cumulativeXpForLevel(level, prestige = 0) {
   let total = 0;
-  for (let i = 1; i < level; i++) total += xpForLevelDelta(i);
+  for (let i = 1; i < level; i++) total += xpForLevelDelta(i, prestige);
   return total;
 }
 
-export function levelFromXp(xp) {
+export function levelFromXp(xp, prestige = 0) {
   let level = 1;
   let cum = 0;
   while (level < MAX_LEVEL) {
-    const needed = xpForLevelDelta(level);
+    const needed = xpForLevelDelta(level, prestige);
     if (cum + needed > xp) break;
     cum += needed;
     level++;
@@ -27,7 +32,7 @@ export function levelFromXp(xp) {
   return {
     level,
     xpInLevel: xp - cum,
-    xpForNext: isMaxLevel ? 0 : xpForLevelDelta(level),
+    xpForNext: isMaxLevel ? 0 : xpForLevelDelta(level, prestige),
     isMaxLevel,
   };
 }

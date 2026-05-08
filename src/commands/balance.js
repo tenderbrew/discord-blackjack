@@ -1,6 +1,6 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { getProfile, seenAs } from '../db.js';
-import { MAX_LEVEL, MAX_PRESTIGE, formatTitleWithPrestige, levelFromXp, progressBar, tierColorFor, tierEmojiFor } from '../game/levels.js';
+import { MAX_LEVEL, MAX_PRESTIGE, formatTitleWithPrestige, levelFromXp, prestigeMultiplier, progressBar, tierColorFor, tierEmojiFor } from '../game/levels.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -12,10 +12,11 @@ export default {
     const username = interaction.user.username;
     seenAs(userId, username);
     const profile = getProfile(userId);
-    const { level, xpInLevel, xpForNext, isMaxLevel } = levelFromXp(profile.xp);
+    const { level, xpInLevel, xpForNext, isMaxLevel } = levelFromXp(profile.xp, profile.prestige);
     const title = formatTitleWithPrestige(level, profile.prestige);
     const tierEmoji = tierEmojiFor(level);
     const color = tierColorFor(level);
+    const multiplier = prestigeMultiplier(profile.prestige);
 
     const embed = new EmbedBuilder()
       .setTitle(`${tierEmoji}  ${title}`)
@@ -31,7 +32,9 @@ export default {
       },
       {
         name: 'Prestige',
-        value: profile.prestige > 0 ? `**★${profile.prestige}**/${MAX_PRESTIGE}` : '—',
+        value: profile.prestige > 0
+          ? `**★${profile.prestige}**/${MAX_PRESTIGE}  *(${multiplier}× XP)*`
+          : '—',
         inline: true,
       },
       {
@@ -41,7 +44,7 @@ export default {
     );
 
     if (isMaxLevel && profile.prestige < MAX_PRESTIGE) {
-      embed.addFields({ name: '​', value: '⭐ You\'ve reached max level. Use `/prestige` to ascend.' });
+      embed.addFields({ name: '​', value: '⭐ You\'ve reached max level. Use `/prestige` to ascend — but the next climb is steeper.' });
     }
 
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });

@@ -15,7 +15,7 @@ export default {
     const target = interaction.options.getUser('user') ?? interaction.user;
     seenAs(target.id, target.username);
     const s = getStats(target.id);
-    const { level } = levelFromXp(s.xp);
+    const { level } = levelFromXp(s.xp, s.prestige);
     const title = formatTitleWithPrestige(level, s.prestige);
 
     const decided = s.hands_won + s.hands_lost + s.hands_pushed;

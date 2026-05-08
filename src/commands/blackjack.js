@@ -21,8 +21,8 @@ function settleAndDetectLevelUp(userId, net) {
   if (net > 0) addXp(userId, net);
   else if (net === 0) addXp(userId, PUSH_XP);
   const after = getProfile(userId);
-  const oldLevel = levelFromXp(before.xp).level;
-  const newLevel = levelFromXp(after.xp).level;
+  const oldLevel = levelFromXp(before.xp, before.prestige).level;
+  const newLevel = levelFromXp(after.xp, after.prestige).level;
   return { leveledUp: newLevel > oldLevel, newLevel, prestige: after.prestige };
 }
 

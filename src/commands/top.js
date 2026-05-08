@@ -72,7 +72,7 @@ export default {
       rows = getTopLevel(10);
       header = '🏰 Level Leaderboard';
       formatLine = (r) => {
-        const { level } = levelFromXp(r.xp);
+        const { level } = levelFromXp(r.xp, r.prestige);
         const title = formatTitleWithPrestige(level, r.prestige);
         return `${tierEmojiFor(level)}  **${r.username}** — ${title}  *(L${level})*`;
       };
