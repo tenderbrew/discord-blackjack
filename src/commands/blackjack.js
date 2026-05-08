@@ -30,10 +30,10 @@ export default {
       return;
     }
 
+    await interaction.deferReply();
+
     adjustChips(userId, -bet);
     const g = game.startGame({ userId, channelId: interaction.channelId, bet });
-
-    await interaction.reply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
 
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
@@ -41,6 +41,7 @@ export default {
       return;
     }
 
+    await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
     const message = await interaction.fetchReply();
     activeGames.set(message.id, g);
   },
@@ -69,31 +70,30 @@ export default {
     const userId = g.userId;
     const username = interaction.user.username;
 
+    if (action === 'double' || action === 'split') {
+      const additional = g.hands[g.currentHandIndex].bet;
+      if (getBalance(userId) < additional) {
+        await interaction.reply({
+          content: `Need **${additional}** more chips to ${action}.`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+    }
+
+    await interaction.deferUpdate();
+
     if (action === 'hit') {
       game.hit(g);
     } else if (action === 'stand') {
       game.stand(g);
     } else if (action === 'double') {
       const additional = g.hands[g.currentHandIndex].bet;
-      if (getBalance(userId) < additional) {
-        await interaction.reply({
-          content: `Need **${additional}** more chips to double.`,
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
       adjustChips(userId, -additional);
       g.totalBet += additional;
       game.double(g);
     } else if (action === 'split') {
       const additional = g.hands[g.currentHandIndex].bet;
-      if (getBalance(userId) < additional) {
-        await interaction.reply({
-          content: `Need **${additional}** more chips to split.`,
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
       adjustChips(userId, -additional);
       g.totalBet += additional;
       game.split(g);
@@ -104,6 +104,6 @@ export default {
       activeGames.delete(messageId);
     }
 
-    await interaction.update(await buildGameMessage(g, { username, balance: getBalance(userId) }));
+    await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
   },
 };

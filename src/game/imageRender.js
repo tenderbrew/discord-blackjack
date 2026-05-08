@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handTotal, isSoft } from './cards.js';
@@ -114,4 +115,10 @@ export async function buildGameImage(game, { hideHole = false } = {}) {
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   }).composite(composites).png().toBuffer();
+}
+
+export async function preloadCards() {
+  const files = readdirSync(PNG_DIR).filter(f => f.endsWith('.png'));
+  await Promise.all(files.map(getScaledCard));
+  return files.length;
 }

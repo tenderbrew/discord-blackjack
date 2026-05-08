@@ -36,8 +36,9 @@ export default {
       return;
     }
 
+    await interaction.deferReply();
     const r = run.startRun(userId, username, day);
-    await interaction.reply(await buildRunMessage(r));
+    await interaction.editReply(await buildRunMessage(r));
     const message = await interaction.fetchReply();
     activeRuns.set(message.id, r);
   },
@@ -56,6 +57,8 @@ export default {
       await interaction.reply({ content: "This isn't your run.", flags: MessageFlags.Ephemeral });
       return;
     }
+
+    await interaction.deferUpdate();
 
     const parts = interaction.customId.split(':');
     const action = parts[1];
@@ -78,7 +81,7 @@ export default {
       activeRuns.delete(messageId);
     }
 
-    await interaction.update(await buildRunMessage(r));
+    await interaction.editReply(await buildRunMessage(r));
   },
 };
 

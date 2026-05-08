@@ -4,6 +4,7 @@ import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { accrueAll } from './db.js';
+import { preloadCards } from './game/imageRender.js';
 
 const ACCRUAL_TICK_MS = 60 * 1000;
 
@@ -21,8 +22,14 @@ for (const file of readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
   }
 }
 
-client.once(Events.ClientReady, c => {
+client.once(Events.ClientReady, async c => {
   console.log(`Logged in as ${c.user.tag}`);
+  try {
+    const n = await preloadCards();
+    console.log(`Pre-warmed ${n} card images.`);
+  } catch (err) {
+    console.error('Card preload failed:', err);
+  }
 });
 
 client.on(Events.InteractionCreate, async interaction => {
