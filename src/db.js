@@ -18,6 +18,8 @@ db.exec(`
     last_daily_at INTEGER,
     last_weekly_at INTEGER,
     last_monthly_at INTEGER,
+    xp INTEGER NOT NULL DEFAULT 0,
+    prestige INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL
   );
 `);
@@ -29,6 +31,12 @@ for (const col of ['last_hourly_at', 'last_daily_at', 'last_weekly_at', 'last_mo
   if (!existingCols.has(col)) {
     db.exec(`ALTER TABLE players ADD COLUMN ${col} INTEGER`);
   }
+}
+if (!existingCols.has('xp')) {
+  db.exec('ALTER TABLE players ADD COLUMN xp INTEGER NOT NULL DEFAULT 0');
+}
+if (!existingCols.has('prestige')) {
+  db.exec('ALTER TABLE players ADD COLUMN prestige INTEGER NOT NULL DEFAULT 0');
 }
 
 export const STARTING_CHIPS = 1000;
@@ -130,6 +138,30 @@ export function accrueAll() {
   const rows = allPlayerIdsStmt.all();
   for (const row of rows) accrue(row.user_id);
   return rows.length;
+}
+
+const addXpStmt = db.prepare('UPDATE players SET xp = xp + ? WHERE user_id = ?');
+const setPrestigeStmt = db.prepare('UPDATE players SET prestige = prestige + 1, xp = 0 WHERE user_id = ?');
+
+export function addXp(userId, amount) {
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  touch(userId);
+  addXpStmt.run(Math.floor(amount), userId);
+}
+
+export function getProfile(userId) {
+  touch(userId);
+  const row = getPlayerStmt.get(userId);
+  return {
+    chips: row.chips,
+    xp: row.xp ?? 0,
+    prestige: row.prestige ?? 0,
+  };
+}
+
+export function prestigePlayer(userId) {
+  touch(userId);
+  setPrestigeStmt.run(userId);
 }
 
 db.exec(`

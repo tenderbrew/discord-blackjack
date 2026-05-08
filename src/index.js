@@ -39,7 +39,10 @@ client.on(Events.InteractionCreate, async interaction => {
       if (command) await command.execute(interaction);
     } else if (interaction.isButton()) {
       const ns = interaction.customId.split(':')[0];
-      const cmdName = ns === 'bj' ? 'blackjack' : ns === 'run' ? 'run' : null;
+      const cmdName = ns === 'bj' ? 'blackjack'
+        : ns === 'run' ? 'run'
+        : ns === 'prestige' ? 'prestige'
+        : null;
       if (cmdName) {
         const command = client.commands.get(cmdName);
         if (command?.handleButton) await command.handleButton(interaction);

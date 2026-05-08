@@ -1,7 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import * as game from '../game/blackjack.js';
 import { buildGameMessage } from '../game/render.js';
-import { adjustChips, getBalance } from '../db.js';
+import { addXp, adjustChips, getBalance } from '../db.js';
 
 const activeGames = new Map();
 
@@ -37,6 +37,7 @@ export default {
 
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
+      addXp(userId, g.totalBet);
       await interaction.editReply(await buildGameMessage(g, { username, balance: getBalance(userId) }));
       return;
     }
@@ -101,6 +102,7 @@ export default {
 
     if (g.phase === 'done') {
       adjustChips(userId, g.totalBet + g.result.net);
+      addXp(userId, g.totalBet);
       activeGames.delete(messageId);
     }
 
