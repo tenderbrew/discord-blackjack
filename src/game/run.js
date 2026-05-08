@@ -15,6 +15,7 @@ export function startRun(userId, username, day = dayKey()) {
     maxHands: MAX_HANDS,
     currentGame: null,
     phase: 'awaiting-bet',
+    history: [],
     finalScore: null,
   };
 }
@@ -67,9 +68,8 @@ export function runSplit(run) {
   return true;
 }
 
-function finishCurrentHand(run) {
-  run.bankroll += run.currentGame.totalBet + run.currentGame.result.net;
-  run.handsPlayed += 1;
+export function continueAfterHand(run) {
+  if (run.phase !== 'post-hand') return;
   run.currentGame = null;
   if (run.handsPlayed >= run.maxHands || run.bankroll < MIN_BET) {
     run.phase = 'done';
@@ -77,4 +77,19 @@ function finishCurrentHand(run) {
   } else {
     run.phase = 'awaiting-bet';
   }
+}
+
+function finishCurrentHand(run) {
+  const game = run.currentGame;
+  run.bankroll += game.totalBet + game.result.net;
+  run.handsPlayed += 1;
+  run.history.push({
+    handNum: run.handsPlayed,
+    totalBet: game.totalBet,
+    net: game.result.net,
+    outcomes: game.result.outcomes,
+    bankrollAfter: run.bankroll,
+  });
+  // Keep currentGame so post-hand can render the final cards.
+  run.phase = 'post-hand';
 }

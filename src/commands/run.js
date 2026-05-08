@@ -74,6 +74,8 @@ export default {
       run.runDouble(r);
     } else if (action === 'split') {
       run.runSplit(r);
+    } else if (action === 'next') {
+      run.continueAfterHand(r);
     }
 
     if (r.phase === 'done') {
@@ -85,24 +87,64 @@ export default {
   },
 };
 
-async function buildRunMessage(r) {
-  const embed = new EmbedBuilder()
-    .setTitle('🂡 Daily Run')
-    .setColor(getColor(r));
+function handIcon(entry) {
+  if (entry.outcomes.length === 1) {
+    if (entry.outcomes[0] === 'blackjack') return '🎉';
+    if (entry.outcomes[0] === 'bust') return '💥';
+  }
+  if (entry.net > 0) return '✅';
+  if (entry.net < 0) return '❌';
+  return '➖';
+}
 
-  const headerLines = [
-    `**Day** ${r.day}`,
-    `**Bankroll** ${r.bankroll}`,
-    `**Hands** ${r.handsPlayed}/${r.maxHands}`,
-  ];
+function historyStrip(r) {
+  const slots = [];
+  for (let i = 0; i < r.maxHands; i++) {
+    slots.push(i < r.history.length ? handIcon(r.history[i]) : '·');
+  }
+  return slots.join('  ');
+}
+
+function lastHandResultText(r) {
+  const e = r.history[r.history.length - 1];
+  if (!e) return '';
+  const abs = Math.abs(e.net);
+  if (e.outcomes.length === 1) {
+    const o = e.outcomes[0];
+    if (o === 'blackjack') return `🎉 **Blackjack!**  +${abs} chips`;
+    if (o === 'win') return `✅ **You win!**  +${abs} chips`;
+    if (o === 'push') return `➖ **Push** — bet returned`;
+    if (o === 'loss') return `❌ **Dealer wins.**  −${abs} chips`;
+    if (o === 'bust') return `💥 **Bust!**  −${abs} chips`;
+    if (o === 'dealer_blackjack') return `❌ **Dealer blackjack.**  −${abs} chips`;
+  }
+  const tag = { win: '✅', push: '➖', loss: '❌', bust: '💥', blackjack: '🎉' };
+  const labels = e.outcomes.map((o, i) => `H${i + 1} ${tag[o] ?? '?'}`);
+  const sign = e.net > 0 ? '+' : e.net < 0 ? '−' : '';
+  return `${labels.join('  ·  ')}\n**Net:** ${sign}${abs} chips`;
+}
+
+async function buildRunMessage(r) {
+  const embed = new EmbedBuilder().setTitle('🂡 Daily Run').setColor(getColor(r));
 
   if (r.phase === 'awaiting-bet') {
-    embed.setDescription(headerLines.join('  ·  ') + `\n\nPlace your bet for hand ${r.handsPlayed + 1}.`);
+    const lines = [
+      `**Bankroll** ${r.bankroll}  ·  **Hand** ${r.handsPlayed + 1}/${r.maxHands}  ·  **Day** ${r.day}`,
+      historyStrip(r),
+    ];
+    if (r.history.length > 0) {
+      lines.push('', lastHandResultText(r));
+    }
+    lines.push('', `Place your bet for hand ${r.handsPlayed + 1}.`);
+    embed.setDescription(lines.join('\n'));
     return { embeds: [embed], components: [buildBetButtons(r)], files: [] };
   }
 
   if (r.phase === 'in-hand') {
-    embed.setDescription(headerLines.join('  ·  '));
+    embed.setDescription([
+      `**Bankroll** ${r.bankroll}  ·  **Hand** ${r.handsPlayed + 1}/${r.maxHands}`,
+      historyStrip(r),
+    ].join('\n'));
     const showHole = r.currentGame.phase !== 'player';
     const imageBuf = await buildGameImage(r.currentGame, { hideHole: !showHole });
     const attachment = new AttachmentBuilder(imageBuf, { name: 'hand.png' });
@@ -111,20 +153,39 @@ async function buildRunMessage(r) {
     return { embeds: [embed], components, files: [attachment] };
   }
 
+  if (r.phase === 'post-hand') {
+    const willEnd = r.handsPlayed >= r.maxHands || r.bankroll < MIN_BET;
+    embed.setDescription([
+      `**Hand ${r.handsPlayed} result**  ·  **Bankroll** ${r.bankroll}`,
+      historyStrip(r),
+      ``,
+      lastHandResultText(r),
+    ].join('\n'));
+    const imageBuf = await buildGameImage(r.currentGame, { hideHole: false });
+    const attachment = new AttachmentBuilder(imageBuf, { name: 'hand.png' });
+    embed.setImage('attachment://hand.png');
+    const nextLabel = willEnd ? 'See final score' : `Next hand (${r.handsPlayed + 1}/${r.maxHands})`;
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('run:next').setLabel(nextLabel).setStyle(ButtonStyle.Primary),
+    );
+    return { embeds: [embed], components: [row], files: [attachment] };
+  }
+
   // done
   const rank = rankInDay(r.userId, r.day);
   const streak = getUserStreak(r.userId);
   const delta = r.bankroll - STARTING_BANKROLL;
   const sign = delta > 0 ? '+' : delta < 0 ? '−' : '';
-  const summary = [
+  embed.setDescription([
     `**Final score:** ${r.bankroll} chips (${sign}${Math.abs(delta)} from start)`,
+    historyStrip(r),
+    ``,
     `**Hands played:** ${r.handsPlayed}/${r.maxHands}`,
     `**Rank today:** #${rank ?? '?'}`,
     `**Streak:** ${streak.current} day${streak.current === 1 ? '' : 's'} (best ${streak.best})`,
     ``,
     `Come back tomorrow for a new daily run. \`/top\` to see the leaderboard.`,
-  ].join('\n');
-  embed.setDescription(summary);
+  ].join('\n'));
   return { embeds: [embed], components: [], files: [] };
 }
 
@@ -161,6 +222,14 @@ function buildHandButtons(r) {
 }
 
 function getColor(r) {
+  if (r.phase === 'post-hand') {
+    const last = r.history[r.history.length - 1];
+    if (last) {
+      if (last.net > 0) return 0x57f287;
+      if (last.net < 0) return 0xed4245;
+      return 0xfee75c;
+    }
+  }
   if (r.phase !== 'done') return 0x2b2d31;
   if (r.bankroll > STARTING_BANKROLL) return 0x57f287;
   if (r.bankroll === 0) return 0xed4245;
