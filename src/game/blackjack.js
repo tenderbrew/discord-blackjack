@@ -28,9 +28,7 @@ export function startGame({ userId, channelId, bet, rng }) {
 
   if (playerBJ || dealerBJ) {
     game.phase = 'done';
-    if (playerBJ && dealerBJ) {
-      game.result = { outcomes: ['push'], net: 0 };
-    } else if (playerBJ) {
+    if (playerBJ) {
       game.result = { outcomes: ['blackjack'], net: Math.floor(bet * 1.5) };
     } else {
       game.result = { outcomes: ['dealer_blackjack'], net: -bet };
